@@ -1,8 +1,9 @@
 import { getDb } from '@/lib/firebase-admin';
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table';
-import { Quote } from "@/lib/types";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import type { Quote } from "@/lib/types";
 import { DollarSign, FileText, CheckCircle, BarChart3 } from "lucide-react";
+import type { firestore as admin } from 'firebase-admin';
 
 async function getDashboardData() {
     const db = getDb();
