@@ -26,25 +26,29 @@ export async function parseList(file: File): Promise<ParsedItem[]> {
 
     if (cacheDoc.exists) {
       console.log('Cache hit! Returning cached result for image.');
-      return cacheDoc.data()?.result as ParsedItem[];
-    } else {
-      console.log('Cache miss. Processing image with AI.');
-      // In a real app, this would use OCR/parsing logic.
-      // Here we return mock data.
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      const result: ParsedItem[] = [
-        { id: '1', raw: '2 cuadernos 100 hojas líneas', quantity: 2, description: 'cuadernos 100 hojas líneas' },
-        { id: '2', raw: '1 Lápiz HB', quantity: 1, description: 'Lápiz HB' },
-        { id: '3', raw: '1 borrador de queso', quantity: 1, description: 'borrador' },
-        { id: '4', raw: '1 sacapuntas', quantity: 1, description: 'sacapuntas' },
-        { id: '5', raw: '1 marcador permanente negro', quantity: 1, description: 'marcador permanente negro' },
-      ];
-      
-      // Save result to cache
-      await cacheRef.set({ result, createdAt: new Date() });
-      console.log('Result saved to cache.');
-      return result;
-    }
+      const data = cacheDoc.data();
+      if(data) {
+        // Ensure createdAt is a serializable format if needed, but for returning it's fine
+        return data.result as ParsedItem[];
+      }
+    } 
+    
+    console.log('Cache miss. Processing image with AI.');
+    // In a real app, this would use OCR/parsing logic.
+    // Here we return mock data.
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    const result: ParsedItem[] = [
+      { id: '1', raw: '2 cuadernos 100 hojas líneas', quantity: 2, description: 'cuadernos 100 hojas líneas' },
+      { id: '2', raw: '1 Lápiz HB', quantity: 1, description: 'Lápiz HB' },
+      { id: '3', raw: '1 borrador de queso', quantity: 1, description: 'borrador' },
+      { id: '4', raw: '1 sacapuntas', quantity: 1, description: 'sacapuntas' },
+      { id: '5', raw: '1 marcador permanente negro', quantity: 1, description: 'marcador permanente negro' },
+    ];
+    
+    // Save result to cache
+    await cacheRef.set({ result, createdAt: new Date() });
+    console.log('Result saved to cache.');
+    return result;
   }
 
   // Fallback for non-image files or if caching is not applicable
