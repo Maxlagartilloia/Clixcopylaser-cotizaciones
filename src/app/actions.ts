@@ -169,7 +169,6 @@ export async function uploadCatalog(file: File): Promise<{success: boolean, mess
         const fileContent = await file.text();
         const rows = fileContent.split('\n').filter(row => row.trim() !== '');
         
-        // Trim headers and handle potential spaces around commas
         const headerLine = rows.shift()?.trim();
         if (!headerLine) {
             return { success: false, message: 'El archivo CSV está vacío o no tiene cabecera.', count: 0 };
@@ -192,7 +191,7 @@ export async function uploadCatalog(file: File): Promise<{success: boolean, mess
 
         const products: CatalogItem[] = rows.map(row => {
             const values = row.trim().split(',');
-            const costString = values[costoIndex]?.replace(/[^0-9,]/g, '').replace(',', '.') || '0';
+            const costString = values[costoIndex]?.replace(/[^0-9,.]/g, '').replace(',', '.') || '0';
             
             return {
                 id: values[idIndex],

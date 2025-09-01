@@ -82,7 +82,7 @@ export default function ProductsPage() {
                 <Card>
                     <CardHeader>
                         <CardTitle>Subir Catálogo con CSV</CardTitle>
-                        <CardDescription>Importa tu catálogo de productos masivamente desde un archivo CSV. Las columnas deben ser: id,material,unidad,costoUnitario,marca</CardDescription>
+                        <CardDescription>Importa tu catálogo de productos masivamente desde un archivo CSV. Las columnas deben ser: ID, MATERIAL, UNIDAD, COSTO UNITARIO, MARCA</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="space-y-2">
