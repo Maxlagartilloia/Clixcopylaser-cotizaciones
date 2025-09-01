@@ -42,9 +42,12 @@ export default function ReviewStep({ initialItems, onReviewCompleted, onReset }:
       setIsGeneratingQuote(true);
       
       const quoteItems = items.filter(item => item.status === 'found' && item.catalogItem).map(item => ({
-        ...item.catalogItem!,
+        id: item.catalogItem!.id,
+        material: item.catalogItem!.material,
+        marca: item.catalogItem!.marca,
+        costoUnitario: item.catalogItem!.costoUnitario,
         quantity: item.quantity,
-        totalPrice: item.catalogItem!.unitPrice * item.quantity,
+        totalPrice: item.catalogItem!.costoUnitario * item.quantity,
       }));
       
       const subtotal = quoteItems.reduce((sum, item) => sum + item.totalPrice, 0);
@@ -68,9 +71,7 @@ export default function ReviewStep({ initialItems, onReviewCompleted, onReset }:
   const getStatusBadge = (status: MatchedItem['status']) => {
     switch (status) {
       case 'found':
-        return <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-200"><CheckCircle className="mr-1 h-3 w-3" />En stock</Badge>;
-      case 'low_stock':
-        return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 border-yellow-200"><HelpCircle className="mr-1 h-3 w-3" />Stock bajo</Badge>;
+        return <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-200"><CheckCircle className="mr-1 h-3 w-3" />Encontrado</Badge>;
       case 'not_found':
         return <Badge variant="destructive"><XCircle className="mr-1 h-3 w-3" />No encontrado</Badge>;
       default:
@@ -105,7 +106,7 @@ export default function ReviewStep({ initialItems, onReviewCompleted, onReset }:
                       <TableHead>Descripción Original</TableHead>
                       <TableHead>Normalizado (IA)</TableHead>
                       <TableHead>Estado</TableHead>
-                      <TableHead className="text-right">P. Unit.</TableHead>
+                      <TableHead className="text-right">Costo Unit.</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -118,7 +119,7 @@ export default function ReviewStep({ initialItems, onReviewCompleted, onReset }:
                         </TableCell>
                         <TableCell>{getStatusBadge(item.status)}</TableCell>
                         <TableCell className="text-right font-mono">
-                          {item.catalogItem ? `$${item.catalogItem.unitPrice.toFixed(2)}` : '-'}
+                          {item.catalogItem ? `$${item.catalogItem.costoUnitario.toFixed(2)}` : '-'}
                         </TableCell>
                       </TableRow>
                     ))}

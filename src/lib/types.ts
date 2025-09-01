@@ -7,10 +7,10 @@ export interface ParsedItem {
 
 export interface CatalogItem {
   id: string;
-  name: string;
-  brand: string;
-  unitPrice: number;
-  stock: number;
+  material: string;
+  unidad: string;
+  costoUnitario: number;
+  marca: string;
 }
 
 export interface MatchedItem extends ParsedItem {
@@ -25,7 +25,11 @@ export interface SuggestedReplacement {
   reason: string;
 }
 
-export interface QuoteItem extends CatalogItem {
+export interface QuoteItem {
+  id: string;
+  material: string;
+  marca: string;
+  costoUnitario: number;
   quantity: number;
   totalPrice: number;
 }

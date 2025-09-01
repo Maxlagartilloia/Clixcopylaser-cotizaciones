@@ -22,7 +22,7 @@ export default function FinalQuoteStep({ quote, onReset }: FinalQuoteStepProps) 
 
   const generateWhatsAppMessage = () => {
     const header = "¡Hola! 👋 Aquí está un resumen de tu cotización de Importadora Clixcopylaser:\n\n";
-    const items = quote.items.map(item => `- ${item.quantity}x ${item.name}`).join('\n');
+    const items = quote.items.map(item => `- ${item.quantity}x ${item.material}`).join('\n');
     const footer = `\n\n*Subtotal:* ${formatCurrency(quote.subtotal)}\n*IVA (12%):* ${formatCurrency(quote.iva)}\n*Total:* *${formatCurrency(quote.total)}*\n\nPara ver el detalle completo o confirmar tu pedido, contáctanos.`;
     
     const message = encodeURIComponent(header + items + footer);
@@ -49,17 +49,17 @@ export default function FinalQuoteStep({ quote, onReset }: FinalQuoteStepProps) 
                   <TableHead>Producto</TableHead>
                   <TableHead>Marca</TableHead>
                   <TableHead className="text-center">Cant.</TableHead>
-                  <TableHead className="text-right">P. Unitario</TableHead>
+                  <TableHead className="text-right">Costo Unitario</TableHead>
                   <TableHead className="text-right">Total</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {quote.items.map(item => (
                   <TableRow key={item.id}>
-                    <TableCell className="font-medium">{item.name}</TableCell>
-                    <TableCell className="text-muted-foreground">{item.brand}</TableCell>
+                    <TableCell className="font-medium">{item.material}</TableCell>
+                    <TableCell className="text-muted-foreground">{item.marca}</TableCell>
                     <TableCell className="text-center">{item.quantity}</TableCell>
-                    <TableCell className="text-right font-mono">{formatCurrency(item.unitPrice)}</TableCell>
+                    <TableCell className="text-right font-mono">{formatCurrency(item.costoUnitario)}</TableCell>
                     <TableCell className="text-right font-mono">{formatCurrency(item.totalPrice)}</TableCell>
                   </TableRow>
                 ))}

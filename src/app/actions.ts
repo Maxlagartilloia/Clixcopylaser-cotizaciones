@@ -94,14 +94,13 @@ export async function processItems(items: ParsedItem[]): Promise<MatchedItem[]> 
         const { normalizedItemDescription } = await normalizeFlow({ itemDescription: item.description });
         
         // Match against catalog
-        const catalogItem = catalog.find(ci => ci.name.includes(normalizedItemDescription));
+        const catalogItem = catalog.find(ci => ci.material.includes(normalizedItemDescription));
 
         if (catalogItem) {
-          const status = catalogItem.stock === 0 ? 'not_found' : catalogItem.stock < item.quantity ? 'low_stock' : 'found';
-          return {
+           return {
             ...item,
             normalizedDescription: normalizedItemDescription,
-            status: status,
+            status: 'found',
             catalogItem: catalogItem,
           };
         } else {
@@ -129,10 +128,10 @@ export async function getSuggestions(unavailableItems: MatchedItem[]): Promise<S
       itemName: item.normalizedDescription || item.description,
       quantity: item.quantity,
     })),
-    availableItems: catalog.filter(item => item.stock > 0).map(item => ({
-        itemName: item.name,
-        unitPrice: item.unitPrice,
-        stock: item.stock
+    availableItems: catalog.map(item => ({
+        itemName: item.material,
+        unitPrice: item.costoUnitario,
+        stock: 999 // Representing as in-stock
     })),
     budget: 100, // A mock budget for reasoning
   };
@@ -146,7 +145,7 @@ export async function getSuggestions(unavailableItems: MatchedItem[]): Promise<S
     if (catalog.length > 0) {
         return [{
           originalItem: unavailableItems[0].description,
-          replacementItem: catalog.find(i => i.stock > 0)?.name || 'No replacement found',
+          replacementItem: catalog[0]?.material || 'No replacement found',
           reason: "El modelo AI no pudo generar una sugerencia, esta es una alternativa de respaldo."
         }];
     }
@@ -165,18 +164,18 @@ export async function uploadCatalog(file: File): Promise<{success: boolean, mess
         const rows = fileContent.split('\n').filter(row => row.trim() !== '');
         const headers = rows.shift()?.trim().split(',');
 
-        if (!headers || headers.join(',') !== 'id,name,brand,unitPrice,stock') {
-             return { success: false, message: 'Las cabeceras del CSV deben ser: id,name,brand,unitPrice,stock', count: 0 };
+        if (!headers || headers.join(',') !== 'id,material,unidad,costoUnitario,marca') {
+             return { success: false, message: 'Las cabeceras del CSV deben ser: id,material,unidad,costoUnitario,marca', count: 0 };
         }
 
         const products: CatalogItem[] = rows.map(row => {
             const values = row.trim().split(',');
             return {
                 id: values[0],
-                name: values[1],
-                brand: values[2],
-                unitPrice: parseFloat(values[3]),
-                stock: parseInt(values[4], 10),
+                material: values[1],
+                unidad: values[2],
+                costoUnitario: parseFloat(values[3]),
+                marca: values[4],
             };
         });
 

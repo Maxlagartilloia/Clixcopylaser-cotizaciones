@@ -19,11 +19,11 @@ const SuggestReplacementsInputSchema = z.object({
   ).describe('A list of unavailable school supply items.'),
   availableItems: z.array(
     z.object({
-      itemName: z.string().describe('The name of the available item.'),
-      unitPrice: z.number().describe('The unit price of the available item.'),
-      stock: z.number().describe('The stock quantity of the available item.'),
+      itemName: z.string().describe('The name of the available item (material).'),
+      unitPrice: z.number().describe('The unit cost of the available item.'),
+      stock: z.number().describe('The stock quantity of the available item. Assumed to be available.'),
     })
-  ).describe('A list of currently available school supply items with prices and stock.'),
+  ).describe('A list of currently available school supply items with prices.'),
   budget: z.number().describe('The total budget for the school supplies.'),
 });
 export type SuggestReplacementsInput = z.infer<typeof SuggestReplacementsInputSchema>;
@@ -59,7 +59,7 @@ Unavailable Items:
 
 Available Items:
 {{#each availableItems}}
-- {{itemName}} (Price: {{unitPrice}}, Stock: {{stock}})
+- {{itemName}} (Price: {{unitPrice}})
 {{/each}}
 
 Total Budget: {{budget}}
