@@ -1,6 +1,24 @@
 # Settings to manage and configure a Firebase App Hosting backend.
 # https://firebase.google.com/docs/app-hosting/configure
 
+# The number of CPUs and amount of memory to reserve for each server
+# instance.
+resources:
+  cpu: 0.5
+  memoryMiB: 512
+
+# The number of server instances that will be provisioned for your backend.
+scaling:
+  minInstances: 0
+  maxInstances: 2
+
+# The length of time to wait for a server instance to start before
+# timing out.
+serverStartupTimeoutSeconds: 600
+
+# The length of time to wait for a server to respond to a request before
+# timing out.
+serverRequestTimeoutSeconds: 600
 runConfig:
   # Increase this value if you'd like to automatically spin up
   # more instances in response to increased traffic.
