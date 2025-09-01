@@ -1,10 +1,11 @@
+
 'use server';
 
-import { normalizeItemDescription as normalizeFlow } from '@/ai/flows/normalize-item-descriptions';
 import { suggestReplacements as replacementsFlow } from '@/ai/flows/ai-suggested-replacements';
 import { getDb } from '@/lib/firebase-admin';
 import type { CatalogItem, MatchedItem, ParsedItem, SuggestedReplacement, SuggestReplacementsInput } from '@/lib/types';
 import crypto from 'crypto';
+import { matchProducto } from '@/lib/normalizar';
 
 
 async function generateImageHash(file: File): Promise<string> {
@@ -91,20 +92,25 @@ export async function processItems(items: ParsedItem[]): Promise<MatchedItem[]> 
   const processedItems: MatchedItem[] = await Promise.all(
     items.map(async (item) => {
       try {
-        const { normalizedItemDescription } = await normalizeFlow({ itemDescription: item.description });
+        const match = matchProducto(item.description);
         
-        // Match against catalog
-        const catalogItem = catalog.find(ci => ci.material.includes(normalizedItemDescription));
+        if (match) {
+          const normalizedDescription = match.canonico;
+          // Match against catalog using the canonical name
+          const catalogItem = catalog.find(ci => ci.material.toLowerCase().includes(normalizedDescription.toLowerCase()));
 
-        if (catalogItem) {
-           return {
-            ...item,
-            normalizedDescription: normalizedItemDescription,
-            status: 'found',
-            catalogItem: catalogItem,
-          };
+          if (catalogItem) {
+            return {
+              ...item,
+              normalizedDescription: normalizedDescription,
+              status: 'found',
+              catalogItem: catalogItem,
+            };
+          } else {
+            return { ...item, normalizedDescription: normalizedDescription, status: 'not_found' };
+          }
         } else {
-          return { ...item, normalizedDescription: normalizedItemDescription, status: 'not_found' };
+           return { ...item, status: 'not_found' };
         }
       } catch (error) {
         console.error('Error processing item:', item.description, error);
