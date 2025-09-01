@@ -176,11 +176,12 @@ export async function uploadCatalog(file: File): Promise<{success: boolean, mess
 
         const products: CatalogItem[] = rows.map(row => {
             const values = row.trim().split(',');
+            const costString = values[3]?.replace(',', '.') || '0';
             return {
                 id: values[0],
                 material: values[1],
                 unidad: values[2],
-                costoUnitario: parseFloat(values[3]),
+                costoUnitario: parseFloat(costString),
                 marca: values[4],
             };
         });
