@@ -11,9 +11,13 @@ const getFirebaseAdmin = () => {
         return admin.initializeApp({
             credential: admin.credential.applicationDefault(),
         });
-    } catch (error) {
+    } catch (error: any) {
+        // If the error is that the app already exists, we can safely ignore it and return the existing app.
+        if (error.code === 'auth/credential-not-found' || error.code === 'app/duplicate-app') {
+            return admin.app();
+        }
         console.error('Firebase admin initialization error', error);
-        // We re-throw the error to make it clear that something is wrong with the setup.
+        // We re-throw other errors to make it clear that something is wrong with the setup.
         throw error;
     }
 };
