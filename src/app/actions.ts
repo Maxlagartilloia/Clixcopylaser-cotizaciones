@@ -168,23 +168,44 @@ export async function uploadCatalog(file: File): Promise<{success: boolean, mess
     try {
         const fileContent = await file.text();
         const rows = fileContent.split('\n').filter(row => row.trim() !== '');
-        const headers = rows.shift()?.trim().split(',');
-
-        if (!headers || headers.join(',') !== 'id,material,unidad,costoUnitario,marca') {
-             return { success: false, message: 'Las cabeceras del CSV deben ser: id,material,unidad,costoUnitario,marca', count: 0 };
+        
+        // Trim headers and handle potential spaces around commas
+        const headerLine = rows.shift()?.trim();
+        if (!headerLine) {
+            return { success: false, message: 'El archivo CSV está vacío o no tiene cabecera.', count: 0 };
         }
+        
+        const headers = headerLine.split(',').map(h => h.trim().toUpperCase());
+        
+        const requiredHeaders = ['ID', 'MATERIAL', 'UNIDAD', 'COSTO UNITARIO', 'MARCA'];
+        const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
+
+        if (missingHeaders.length > 0) {
+             return { success: false, message: `Faltan las siguientes cabeceras en el CSV: ${missingHeaders.join(', ')}`, count: 0 };
+        }
+
+        const idIndex = headers.indexOf('ID');
+        const materialIndex = headers.indexOf('MATERIAL');
+        const unidadIndex = headers.indexOf('UNIDAD');
+        const costoIndex = headers.indexOf('COSTO UNITARIO');
+        const marcaIndex = headers.indexOf('MARCA');
 
         const products: CatalogItem[] = rows.map(row => {
             const values = row.trim().split(',');
-            const costString = values[3]?.replace(',', '.') || '0';
+            const costString = values[costoIndex]?.replace(/[^0-9,]/g, '').replace(',', '.') || '0';
+            
             return {
-                id: values[0],
-                material: values[1],
-                unidad: values[2],
+                id: values[idIndex],
+                material: values[materialIndex],
+                unidad: values[unidadIndex],
                 costoUnitario: parseFloat(costString),
-                marca: values[4],
+                marca: values[marcaIndex],
             };
-        });
+        }).filter(p => p.id && p.material); // Filter out empty rows
+
+        if (products.length === 0) {
+            return { success: false, message: 'No se encontraron productos válidos en el archivo.', count: 0 };
+        }
 
         const db = getDb();
         const batch = db.batch();
