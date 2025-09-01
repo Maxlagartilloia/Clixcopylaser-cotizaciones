@@ -22,7 +22,7 @@ export interface MatchedItem extends ParsedItem {
 export interface SuggestedReplacement {
   originalItem: string;
   replacementItem: string;
-a  reason: string;
+  reason: string;
 }
 
 export interface QuoteItem {
@@ -47,4 +47,9 @@ export interface Synonym {
     id: string;
     term: string;
     normalizedTerm: string;
+}
+
+export interface AppSettings {
+  ivaRate: number;
+  whatsappNumber: string;
 }

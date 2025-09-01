@@ -2,7 +2,7 @@
 
 import { suggestReplacements as replacementsFlow } from '@/ai/flows/ai-suggested-replacements';
 import { getDb } from '@/lib/firebase-admin';
-import type { CatalogItem, MatchedItem, ParsedItem, SuggestedReplacement, SuggestReplacementsInput, Synonym } from '@/lib/types';
+import type { AppSettings, CatalogItem, MatchedItem, ParsedItem, SuggestedReplacement, SuggestReplacementsInput, Synonym } from '@/lib/types';
 import crypto from 'crypto';
 import { matchProducto } from '@/lib/normalizar';
 
@@ -96,10 +96,17 @@ export async function getCatalog(): Promise<CatalogItem[]> {
 // Add a new product to firestore
 export async function addProduct(id: string, product: Omit<CatalogItem, 'id'>) {
     const db = getDb();
-    // Use the provided ID as the document ID
     const docRef = db.collection('products').doc(id);
     await docRef.set(product);
 }
+
+// Update an existing product
+export async function updateProduct(id: string, product: Omit<CatalogItem, 'id'>) {
+    const db = getDb();
+    const docRef = db.collection('products').doc(id);
+    await docRef.update(product);
+}
+
 
 // Delete a product from firestore
 export async function deleteProduct(id: string) {
@@ -279,17 +286,41 @@ export async function getSynonyms(): Promise<Synonym[]> {
     }
     return snapshot.docs.map(doc => ({
         id: doc.id,
-        term: doc.data().term,
-        normalizedTerm: doc.data().normalizedTerm,
-    }));
+        ...doc.data()
+    } as Synonym));
 }
 
-export async function addSynonym(synonym: Omit<Synonym, 'id'>) {
+export async function addSynonym(synonym: Omit<Synonym, 'id'>): Promise<string> {
     const db = getDb();
-    await db.collection('synonyms').add(synonym);
+    const docRef = await db.collection('synonyms').add(synonym);
+    return docRef.id;
+}
+
+export async function updateSynonym(id: string, synonym: Omit<Synonym, 'id'>) {
+    const db = getDb();
+    await db.collection('synonyms').doc(id).update(synonym);
 }
 
 export async function deleteSynonym(id: string) {
     const db = getDb();
     await db.collection('synonyms').doc(id).delete();
+}
+
+
+// ---- SETTINGS ACTIONS ----
+export async function getSettings(): Promise<AppSettings> {
+    const db = getDb();
+    const docRef = db.collection('settings').doc('appConfig');
+    const doc = await docRef.get();
+    if (!doc.exists) {
+        // Return default values if no settings are found
+        return { ivaRate: 15, whatsappNumber: '593123456789' };
+    }
+    return doc.data() as AppSettings;
+}
+
+export async function saveSettings(settings: AppSettings) {
+    const db = getDb();
+    const docRef = db.collection('settings').doc('appConfig');
+    await docRef.set(settings, { merge: true });
 }

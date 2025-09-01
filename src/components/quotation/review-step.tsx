@@ -1,17 +1,14 @@
 'use client';
 
 import { useState, useEffect, useTransition } from 'react';
-import { processItems, getSuggestions } from '@/app/actions';
-import type { MatchedItem, ParsedItem, Quote, SuggestedReplacement } from '@/lib/types';
+import { processItems, getSuggestions, getSettings } from '@/app/actions';
+import type { MatchedItem, ParsedItem, Quote, SuggestedReplacement, AppSettings } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { ArrowRight, Bot, CheckCircle, HelpCircle, Loader2, RotateCcw, Sparkles, XCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
-
-const IVA_RATE = 0.15;
 
 interface ReviewStepProps {
   initialItems: ParsedItem[];
@@ -24,9 +21,13 @@ export default function ReviewStep({ initialItems, onReviewCompleted, onReset }:
   const [isGeneratingQuote, setIsGeneratingQuote] = useState(false);
   const [items, setItems] = useState<MatchedItem[]>([]);
   const [suggestions, setSuggestions] = useState<SuggestedReplacement[]>([]);
+  const [settings, setSettings] = useState<AppSettings | null>(null);
 
   useEffect(() => {
     startProcessing(async () => {
+      const appSettings = await getSettings();
+      setSettings(appSettings);
+
       const processed = await processItems(initialItems);
       setItems(processed);
       
@@ -39,6 +40,7 @@ export default function ReviewStep({ initialItems, onReviewCompleted, onReset }:
   }, [initialItems]);
   
   const handleCreateQuote = () => {
+      if (!settings) return; // Should not happen
       setIsGeneratingQuote(true);
       
       const quoteItems = items.filter(item => item.status === 'found' && item.catalogItem).map(item => ({
@@ -51,7 +53,7 @@ export default function ReviewStep({ initialItems, onReviewCompleted, onReset }:
       }));
       
       const subtotal = quoteItems.reduce((sum, item) => sum + item.totalPrice, 0);
-      const iva = subtotal * IVA_RATE;
+      const iva = subtotal * (settings.ivaRate / 100);
       const total = subtotal + iva;
       
       const unavailableItems = items.filter(item => item.status !== 'found');
@@ -87,9 +89,9 @@ export default function ReviewStep({ initialItems, onReviewCompleted, onReset }:
       </header>
 
       {isProcessing ? (
-        <div className="flex flex-col items-center justify-center h-64">
+        <div className="flex flex-col items-center justify-center h-96">
           <Loader2 className="h-12 w-12 animate-spin text-primary" />
-          <p className="mt-4 text-muted-foreground">Analizando tu lista...</p>
+          <p className="mt-4 text-muted-foreground">Analizando tu lista y cargando configuración...</p>
         </div>
       ) : (
         <div className="space-y-8">

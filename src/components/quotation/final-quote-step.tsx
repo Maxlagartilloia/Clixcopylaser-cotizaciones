@@ -1,32 +1,39 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import type { Quote } from "@/lib/types";
-import { Download, Printer, RotateCcw, Share2, ThumbsDown, ThumbsUp, XCircle } from "lucide-react";
+import type { AppSettings, Quote } from "@/lib/types";
+import { Download, Printer, RotateCcw, Share2, ThumbsDown, ThumbsUp, XCircle, Loader2 } from "lucide-react";
+import { getSettings } from '@/app/actions';
 
-interface FinalQuoteStepProps {
-  quote: Quote;
-  onReset: () => void;
-}
+export default function FinalQuoteStep({ quote, onReset }: { quote: Quote, onReset: () => void }) {
+  const [settings, setSettings] = useState<AppSettings | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-const WHATSAPP_NUMBER = "593989968162";
-
-export default function FinalQuoteStep({ quote, onReset }: FinalQuoteStepProps) {
+  useEffect(() => {
+    getSettings()
+      .then(setSettings)
+      .finally(() => setIsLoading(false));
+  }, []);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
   }
+  
+  const ivaRatePercentage = settings ? settings.ivaRate : quote.iva / quote.subtotal * 100;
+  const ivaDisplay = isNaN(ivaRatePercentage) ? '15' : ivaRatePercentage.toFixed(0);
 
   const generateWhatsAppMessage = () => {
+    const whatsappNumber = settings?.whatsappNumber || "593123456789"; // Fallback
     const header = "¡Hola! 👋 Aquí está un resumen de tu cotización de Importadora Clixcopylaser:\n\n";
     const items = quote.items.map(item => `- ${item.quantity}x ${item.material}`).join('\n');
-    const footer = `\n\n*Subtotal:* ${formatCurrency(quote.subtotal)}\n*IVA (15%):* ${formatCurrency(quote.iva)}\n*Total:* *${formatCurrency(quote.total)}*\n\nPara ver el detalle completo o confirmar tu pedido, contáctanos.`;
+    const footer = `\n\n*Subtotal:* ${formatCurrency(quote.subtotal)}\n*IVA (${ivaDisplay}%):* ${formatCurrency(quote.iva)}\n*Total:* *${formatCurrency(quote.total)}*\n\nPara ver el detalle completo o confirmar tu pedido, contáctanos.`;
     
     const message = encodeURIComponent(header + items + footer);
-    return `https://wa.me/${WHATSAPP_NUMBER}?text=${message}`;
+    return `https://wa.me/${whatsappNumber}?text=${message}`;
   }
 
   return (
@@ -70,8 +77,8 @@ export default function FinalQuoteStep({ quote, onReset }: FinalQuoteStepProps) 
                       <TableCell className="text-right font-mono font-semibold">{formatCurrency(quote.subtotal)}</TableCell>
                   </TableRow>
                   <TableRow>
-                      <TableCell colSpan={4} className="text-right font-medium">IVA (15%)</TableCell>
-                      <TableCell className="text-right font-mono font-semibold">{formatCurrency(quote.iva)}</TableCell>
+                      <TableCell colSpan={4} className="text-right font-medium">IVA ({ivaDisplay}%)</TableCell>
+                      <TableCell className="text-right font-mono font-semibold">{formatcurrency(quote.iva)}</TableCell>
                   </TableRow>
                   <TableRow className="text-lg font-bold">
                       <TableCell colSpan={4} className="text-right">Total</TableCell>
@@ -105,13 +112,17 @@ export default function FinalQuoteStep({ quote, onReset }: FinalQuoteStepProps) 
         <CardFooter className="flex-col items-stretch gap-4">
             <div className="flex w-full justify-center md:justify-end gap-2 flex-wrap">
                 <Button variant="outline" onClick={onReset}><RotateCcw className="mr-2 h-4 w-4" />Nueva Cotización</Button>
-                <Button variant="outline"><Download className="mr-2 h-4 w-4" />PDF</Button>
-                <Button variant="outline"><Printer className="mr-2 h-4 w-4" />Imprimir</Button>
-                <Button asChild className="bg-[#25D366] hover:bg-[#128C7E] text-white">
-                    <a href={generateWhatsAppMessage()} target="_blank" rel="noopener noreferrer">
-                        <Share2 className="mr-2 h-4 w-4" />Compartir
-                    </a>
-                </Button>
+                <Button variant="outline" disabled><Download className="mr-2 h-4 w-4" />PDF</Button>
+                <Button variant="outline" onClick={() => window.print()}><Printer className="mr-2 h-4 w-4" />Imprimir</Button>
+                {isLoading ? (
+                  <Button disabled className="bg-[#25D366] hover:bg-[#128C7E] text-white"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Cargando...</Button>
+                ) : (
+                  <Button asChild className="bg-[#25D366] hover:bg-[#128C7E] text-white">
+                      <a href={generateWhatsAppMessage()} target="_blank" rel="noopener noreferrer">
+                          <Share2 className="mr-2 h-4 w-4" />Compartir
+                      </a>
+                  </Button>
+                )}
             </div>
             <Separator className="my-2" />
             <div className="text-xs text-muted-foreground w-full flex justify-between items-center">
