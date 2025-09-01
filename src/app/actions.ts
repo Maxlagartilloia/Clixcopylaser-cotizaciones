@@ -13,10 +13,9 @@ async function generateImageHash(file: File): Promise<string> {
   return crypto.createHash('sha256').update(buffer).digest('hex');
 }
 
-// Simulate parsing a file
 export async function parseList(file: File): Promise<ParsedItem[]> {
   console.log(`Parsing file: ${file.name} of type ${file.type}`);
-  
+
   if (file.type.startsWith('image/')) {
     const db = getDb();
     const imageHash = await generateImageHash(file);
@@ -32,8 +31,6 @@ export async function parseList(file: File): Promise<ParsedItem[]> {
     } 
     
     console.log('Cache miss. Processing image with AI.');
-    // In a real app, this would use OCR/parsing logic.
-    // Here we return mock data for images.
     await new Promise(resolve => setTimeout(resolve, 1500));
     const result: ParsedItem[] = [
       { id: '1', raw: '2 cuadernos 100 hojas líneas', quantity: 2, description: 'cuadernos 100 hojas líneas' },
@@ -43,15 +40,19 @@ export async function parseList(file: File): Promise<ParsedItem[]> {
       { id: '5', raw: '1 marcador permanente negro', quantity: 1, description: 'marcador permanente negro' },
     ];
     
-    // Save result to cache
     await cacheRef.set({ result, createdAt: new Date() });
     console.log('Result saved to cache.');
     return result;
   }
 
-  // Fallback for non-image/non-csv files or if caching is not applicable
-  console.log('File type not supported for direct parsing, returning mock data.');
-  await new Promise(resolve => setTimeout(resolve, 1500));
+  // Fallback for other file types, like CSV or example
+  if (file.type === 'text/csv') {
+      console.log('CSV file detected in parseList, but it should be handled by uploadCatalog. Returning empty array for this step.');
+      return [];
+  }
+  
+  console.log('Using example data.');
+  await new Promise(resolve => setTimeout(resolve, 500));
   return [
     { id: '1', raw: '2 cuadernos 100 hojas líneas', quantity: 2, description: 'cuadernos 100 hojas líneas' },
     { id: '2', raw: '1 Lápiz HB', quantity: 1, description: 'Lápiz HB' },
@@ -172,11 +173,12 @@ export async function uploadCatalog(file: File): Promise<{success: boolean, mess
         if (!headerLine) {
             return { success: false, message: 'El archivo CSV está vacío o no tiene cabecera.', count: 0 };
         }
+
+        // Detect delimiter
+        const delimiter = headerLine.includes(';') ? ';' : ',';
         
-        // Normalize headers from the file for robust matching
-        const fileHeaders = headerLine.split(',').map(h => h.trim().toUpperCase().replace(/\s+/g, ''));
+        const fileHeaders = headerLine.split(delimiter).map(h => h.trim().toUpperCase().replace(/\s+/g, ''));
         
-        // Define required headers in a normalized way
         const requiredHeadersMap = {
             'ID': 'ID',
             'MATERIAL': 'MATERIAL',
@@ -193,7 +195,6 @@ export async function uploadCatalog(file: File): Promise<{success: boolean, mess
             return { success: false, message: `Faltan las siguientes cabeceras en el CSV: ${originalMissing.join(', ')}`, count: 0 };
         }
 
-        // Get the index of each column from the user's file
         const idIndex = fileHeaders.indexOf('ID');
         const materialIndex = fileHeaders.indexOf('MATERIAL');
         const unidadIndex = fileHeaders.indexOf('UNIDAD');
@@ -201,8 +202,7 @@ export async function uploadCatalog(file: File): Promise<{success: boolean, mess
         const marcaIndex = fileHeaders.indexOf('MARCA');
 
         const products: CatalogItem[] = rows.map(row => {
-            const values = row.trim().split(',');
-            // Replace comma with dot for decimal conversion and remove any non-numeric chars except the separator
+            const values = row.trim().split(delimiter);
             const costString = values[costoIndex]?.replace(/[^0-9,.]/g, '').replace(',', '.') || '0';
             
             return {
@@ -212,7 +212,7 @@ export async function uploadCatalog(file: File): Promise<{success: boolean, mess
                 costoUnitario: parseFloat(costString),
                 marca: values[marcaIndex],
             };
-        }).filter(p => p.id && p.material); // Filter out empty rows
+        }).filter(p => p.id && p.material);
 
         if (products.length === 0) {
             return { success: false, message: 'No se encontraron productos válidos en el archivo.', count: 0 };
