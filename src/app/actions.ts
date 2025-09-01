@@ -2,9 +2,9 @@
 
 import { suggestReplacements as replacementsFlow } from '@/ai/flows/ai-suggested-replacements';
 import { getDb } from '@/lib/firebase-admin';
-import type { AppSettings, CatalogItem, MatchedItem, ParsedItem, SuggestedReplacement, SuggestReplacementsInput, Synonym } from '@/lib/types';
+import type { AppSettings, CatalogItem, MatchedItem, ParsedItem, Quote, SuggestedReplacement, SuggestReplacementsInput, Synonym } from '@/lib/types';
 import crypto from 'crypto';
-import { matchProducto } from '@/lib/normalizar';
+import { matchProducto, normalizarEntrada } from '@/lib/normalizar';
 
 
 async function generateImageHash(file: File): Promise<string> {
@@ -15,6 +15,12 @@ async function generateImageHash(file: File): Promise<string> {
 
 export async function parseList(file: File): Promise<ParsedItem[]> {
   console.log(`Parsing file: ${file.name} of type ${file.type}`);
+
+  // Handle CSV uploads separately, this function is for image/text parsing
+  if (file.type === 'text/csv') {
+    console.log('CSV file passed to parseList, should be handled by uploadCatalog. Returning empty.');
+    return [];
+  }
 
   if (file.type.startsWith('image/')) {
     const db = getDb();
@@ -57,12 +63,6 @@ export async function parseList(file: File): Promise<ParsedItem[]> {
         { id: '4', raw: '1 sacapuntas', quantity: 1, description: 'sacapuntas' },
         { id: '5', raw: '1 marcador permanente negro', quantity: 1, description: 'marcador permanente negro' },
       ];
-  }
-
-  // If a CSV is passed here by mistake, return empty. It's handled by uploadCatalog.
-  if (file.type === 'text/csv') {
-      console.log('CSV file passed to parseList, ignoring.');
-      return [];
   }
   
   // Fallback for other file types or errors
@@ -118,33 +118,44 @@ export async function deleteProduct(id: string) {
 // Normalize and match items
 export async function processItems(items: ParsedItem[]): Promise<MatchedItem[]> {
   const catalog = await getCatalog();
+  const synonyms = await getSynonyms();
+
   if (catalog.length === 0) {
-    // If catalog is empty, mark all as not found
     return items.map(item => ({ ...item, status: 'not_found' }));
   }
+
+  const synonymsMap = new Map(synonyms.map(s => [normalizarEntrada(s.term), normalizarEntrada(s.normalizedTerm)]));
 
   const processedItems: MatchedItem[] = await Promise.all(
     items.map(async (item) => {
       try {
-        const match = matchProducto(item.description);
+        const normalizedInput = normalizarEntrada(item.description);
+        let normalizedDescription = normalizedInput;
+        let match: ReturnType<typeof matchProducto> | null = null;
         
-        if (match) {
-          const normalizedDescription = match.canonico;
-          // Match against catalog using the canonical name
-          const catalogItem = catalog.find(ci => ci.material.toLowerCase().includes(normalizedDescription.toLowerCase()));
-
-          if (catalogItem) {
-            return {
-              ...item,
-              normalizedDescription: normalizedDescription,
-              status: 'found',
-              catalogItem: catalogItem,
-            };
-          } else {
-            return { ...item, normalizedDescription: normalizedDescription, status: 'not_found' };
-          }
+        // 1. Exact Synonym Match
+        if (synonymsMap.has(normalizedInput)) {
+          normalizedDescription = synonymsMap.get(normalizedInput)!;
         } else {
-           return { ...item, status: 'not_found' };
+        // 2. AI-based similarity match
+          const aiMatch = matchProducto(item.description);
+          if (aiMatch) {
+            normalizedDescription = aiMatch.canonico;
+          }
+        }
+        
+        // Match against catalog using the determined canonical name
+        const catalogItem = catalog.find(ci => normalizarEntrada(ci.material) === normalizedDescription);
+
+        if (catalogItem) {
+          return {
+            ...item,
+            normalizedDescription: normalizedDescription,
+            status: 'found',
+            catalogItem: catalogItem,
+          };
+        } else {
+          return { ...item, normalizedDescription: normalizedDescription, status: 'not_found' };
         }
       } catch (error) {
         console.error('Error processing item:', item.description, error);
@@ -154,6 +165,7 @@ export async function processItems(items: ParsedItem[]): Promise<MatchedItem[]> 
   );
   return processedItems;
 }
+
 
 // Get AI suggestions for replacements
 export async function getSuggestions(unavailableItems: MatchedItem[]): Promise<SuggestedReplacement[]> {
@@ -276,6 +288,16 @@ export async function uploadCatalog(file: File): Promise<{success: boolean, mess
         return { success: false, message: `Error al procesar el archivo: ${errorMessage}`, count: 0 };
     }
 }
+
+// ---- QUOTE ACTIONS ----
+export async function saveQuote(quote: Quote) {
+  const db = getDb();
+  await db.collection('quotes').add({
+    ...quote,
+    createdAt: new Date(),
+  });
+}
+
 
 // ---- SYNONYM ACTIONS ----
 export async function getSynonyms(): Promise<Synonym[]> {

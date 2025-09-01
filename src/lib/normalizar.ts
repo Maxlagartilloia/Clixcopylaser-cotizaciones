@@ -1,10 +1,9 @@
-
 import { CATALOGO_BASE } from "./sinonimos";
 
-const quitarAcentos = (s: string) =>
+export const quitarAcentos = (s: string) =>
   s.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
-const normalizaBasico = (s: string) =>
+export const normalizarEntrada = (s: string) =>
   quitarAcentos(s.toLowerCase())
     .replace(/\s+/g, " ")
     .replace(/[,.;:]/g, "")
@@ -22,8 +21,8 @@ const reglasExpresiones: Array<[RegExp, string]> = [
   [/\bmicroporoso\b/g, "foamy"]
 ];
 
-export function normalizarEntrada(texto: string): string {
-  let t = normalizaBasico(texto);
+function aplicarReglas(texto: string): string {
+  let t = normalizarEntrada(texto);
   reglasExpresiones.forEach(([re, rep]) => (t = t.replace(re, rep)));
   return t;
 }
@@ -43,12 +42,12 @@ export type MatchResult = {
 };
 
 export function matchProducto(entradaUsuario: string): MatchResult | null {
-  const t = normalizarEntrada(entradaUsuario);
+  const t = aplicarReglas(entradaUsuario);
 
   let mejor: MatchResult | null = null;
   for (const [id, item] of Object.entries(CATALOGO_BASE)) {
     const candidatos = [item.canonico, ...(item.sinonimos || [])]
-      .map(normalizarEntrada);
+      .map(aplicarReglas);
 
     for (const cand of candidatos) {
       const score = indiceJaccard(t, cand);

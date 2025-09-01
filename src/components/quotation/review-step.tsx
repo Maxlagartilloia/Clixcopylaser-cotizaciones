@@ -1,14 +1,15 @@
 'use client';
 
 import { useState, useEffect, useTransition } from 'react';
-import { processItems, getSuggestions, getSettings } from '@/app/actions';
+import { processItems, getSuggestions, getSettings, saveQuote } from '@/app/actions';
 import type { MatchedItem, ParsedItem, Quote, SuggestedReplacement, AppSettings } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { ArrowRight, Bot, CheckCircle, HelpCircle, Loader2, RotateCcw, Sparkles, XCircle } from 'lucide-react';
+import { ArrowRight, Bot, CheckCircle, Loader2, RotateCcw, Sparkles, XCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useToast } from '@/hooks/use-toast';
 
 interface ReviewStepProps {
   initialItems: ParsedItem[];
@@ -22,52 +23,77 @@ export default function ReviewStep({ initialItems, onReviewCompleted, onReset }:
   const [items, setItems] = useState<MatchedItem[]>([]);
   const [suggestions, setSuggestions] = useState<SuggestedReplacement[]>([]);
   const [settings, setSettings] = useState<AppSettings | null>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     startProcessing(async () => {
-      const appSettings = await getSettings();
-      setSettings(appSettings);
+      try {
+        const appSettings = await getSettings();
+        setSettings(appSettings);
 
-      const processed = await processItems(initialItems);
-      setItems(processed);
-      
-      const unavailable = processed.filter(p => p.status === 'not_found' || p.status === 'low_stock');
-      if (unavailable.length > 0) {
-        const aiSuggestions = await getSuggestions(unavailable);
-        setSuggestions(aiSuggestions);
+        const processed = await processItems(initialItems);
+        setItems(processed);
+        
+        const unavailable = processed.filter(p => p.status === 'not_found' || p.status === 'low_stock');
+        if (unavailable.length > 0) {
+          const aiSuggestions = await getSuggestions(unavailable);
+          setSuggestions(aiSuggestions);
+        }
+      } catch (error) {
+        console.error("Error processing list:", error);
+        toast({
+          variant: "destructive",
+          title: "Error al procesar",
+          description: "Hubo un problema al analizar tu lista de útiles. Inténtalo de nuevo."
+        });
+        onReset(); // Go back to upload step
       }
     });
-  }, [initialItems]);
+  }, [initialItems, onReset, toast]);
   
-  const handleCreateQuote = () => {
-      if (!settings) return; // Should not happen
+  const handleCreateQuote = async () => {
+      if (!settings) return;
       setIsGeneratingQuote(true);
       
-      const quoteItems = items.filter(item => item.status === 'found' && item.catalogItem).map(item => ({
-        id: item.catalogItem!.id,
-        material: item.catalogItem!.material,
-        marca: item.catalogItem!.marca,
-        costoUnitario: item.catalogItem!.costoUnitario,
-        quantity: item.quantity,
-        totalPrice: item.catalogItem!.costoUnitario * item.quantity,
-      }));
-      
-      const subtotal = quoteItems.reduce((sum, item) => sum + item.totalPrice, 0);
-      const iva = subtotal * (settings.ivaRate / 100);
-      const total = subtotal + iva;
-      
-      const unavailableItems = items.filter(item => item.status !== 'found');
-      
-      const finalQuote: Quote = {
-        items: quoteItems,
-        subtotal,
-        iva,
-        total,
-        unavailableItems,
-        suggestions,
-      };
-      
-      setTimeout(() => onReviewCompleted(finalQuote), 500);
+      try {
+        const quoteItems = items.filter(item => item.status === 'found' && item.catalogItem).map(item => ({
+          id: item.catalogItem!.id,
+          material: item.catalogItem!.material,
+          marca: item.catalogItem!.marca,
+          costoUnitario: item.catalogItem!.costoUnitario,
+          quantity: item.quantity,
+          totalPrice: item.catalogItem!.costoUnitario * item.quantity,
+        }));
+        
+        const subtotal = quoteItems.reduce((sum, item) => sum + item.totalPrice, 0);
+        const iva = subtotal * (settings.ivaRate / 100);
+        const total = subtotal + iva;
+        
+        const unavailableItems = items.filter(item => item.status !== 'found');
+        
+        const finalQuote: Quote = {
+          items: quoteItems,
+          subtotal,
+          iva,
+          total,
+          unavailableItems,
+          suggestions,
+        };
+
+        await saveQuote(finalQuote);
+        
+        onReviewCompleted(finalQuote);
+
+      } catch (error) {
+        console.error("Error creating or saving quote:", error);
+        toast({
+          variant: "destructive",
+          title: "Error al generar cotización",
+          description: "No se pudo guardar la cotización. Por favor, inténtalo de nuevo."
+        });
+      } finally {
+        setIsGeneratingQuote(false);
+      }
   };
   
   const getStatusBadge = (status: MatchedItem['status']) => {

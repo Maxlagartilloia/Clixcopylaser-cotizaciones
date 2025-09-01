@@ -23,12 +23,12 @@ export default function FinalQuoteStep({ quote, onReset }: { quote: Quote, onRes
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
   }
   
-  const ivaRatePercentage = settings ? settings.ivaRate : quote.iva / quote.subtotal * 100;
-  const ivaDisplay = isNaN(ivaRatePercentage) ? '15' : ivaRatePercentage.toFixed(0);
+  const ivaRatePercentage = settings ? settings.ivaRate : quote.iva > 0 ? (quote.iva / quote.subtotal * 100) : 0;
+  const ivaDisplay = isNaN(ivaRatePercentage) ? '0' : ivaRatePercentage.toFixed(0);
 
   const generateWhatsAppMessage = () => {
     const whatsappNumber = settings?.whatsappNumber || "593123456789"; // Fallback
-    const header = "¡Hola! 👋 Aquí está un resumen de tu cotización de Importadora Clixcopylaser:\n\n";
+    const header = `¡Hola! 👋 Aquí está un resumen de tu cotización de Importadora Clixcopylaser:\n\n*Resumen de Productos:*\n`;
     const items = quote.items.map(item => `- ${item.quantity}x ${item.material}`).join('\n');
     const footer = `\n\n*Subtotal:* ${formatCurrency(quote.subtotal)}\n*IVA (${ivaDisplay}%):* ${formatCurrency(quote.iva)}\n*Total:* *${formatCurrency(quote.total)}*\n\nPara ver el detalle completo o confirmar tu pedido, contáctanos.`;
     
@@ -78,7 +78,7 @@ export default function FinalQuoteStep({ quote, onReset }: { quote: Quote, onRes
                   </TableRow>
                   <TableRow>
                       <TableCell colSpan={4} className="text-right font-medium">IVA ({ivaDisplay}%)</TableCell>
-                      <TableCell className="text-right font-mono font-semibold">{formatcurrency(quote.iva)}</TableCell>
+                      <TableCell className="text-right font-mono font-semibold">{formatCurrency(quote.iva)}</TableCell>
                   </TableRow>
                   <TableRow className="text-lg font-bold">
                       <TableCell colSpan={4} className="text-right">Total</TableCell>
