@@ -4,12 +4,51 @@ import { normalizeItemDescription as normalizeFlow } from '@/ai/flows/normalize-
 import { suggestReplacements as replacementsFlow } from '@/ai/flows/ai-suggested-replacements';
 import { mockCatalog } from '@/lib/data';
 import type { MatchedItem, ParsedItem, SuggestedReplacement, SuggestReplacementsInput } from '@/lib/types';
+import { db } from '@/lib/firebase-admin';
+import crypto from 'crypto';
+
+
+async function generateImageHash(file: File): Promise<string> {
+  const arrayBuffer = await file.arrayBuffer();
+  const buffer = Buffer.from(arrayBuffer);
+  return crypto.createHash('sha256').update(buffer).digest('hex');
+}
 
 // Simulate parsing a file
-export async function parseList(fileName: string): Promise<ParsedItem[]> {
-  console.log(`Parsing file: ${fileName}`);
-  // In a real app, this would use OCR/parsing logic.
-  // Here we return mock data.
+export async function parseList(file: File): Promise<ParsedItem[]> {
+  console.log(`Parsing file: ${file.name}`);
+
+  // Caching for images
+  if (file.type.startsWith('image/')) {
+    const imageHash = await generateImageHash(file);
+    const cacheRef = db.collection('imageCache').doc(imageHash);
+    const cacheDoc = await cacheRef.get();
+
+    if (cacheDoc.exists) {
+      console.log('Cache hit! Returning cached result for image.');
+      return cacheDoc.data()?.result as ParsedItem[];
+    } else {
+      console.log('Cache miss. Processing image with AI.');
+      // In a real app, this would use OCR/parsing logic.
+      // Here we return mock data.
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      const result: ParsedItem[] = [
+        { id: '1', raw: '2 cuadernos 100 hojas líneas', quantity: 2, description: 'cuadernos 100 hojas líneas' },
+        { id: '2', raw: '1 Lápiz HB', quantity: 1, description: 'Lápiz HB' },
+        { id: '3', raw: '1 borrador de queso', quantity: 1, description: 'borrador' },
+        { id: '4', raw: '1 sacapuntas', quantity: 1, description: 'sacapuntas' },
+        { id: '5', raw: '1 marcador permanente negro', quantity: 1, description: 'marcador permanente negro' },
+      ];
+      
+      // Save result to cache
+      await cacheRef.set({ result, createdAt: new Date() });
+      console.log('Result saved to cache.');
+      return result;
+    }
+  }
+
+  // Fallback for non-image files or if caching is not applicable
+  console.log('Processing non-image file.');
   await new Promise(resolve => setTimeout(resolve, 1500));
   return [
     { id: '1', raw: '2 cuadernos 100 hojas líneas', quantity: 2, description: 'cuadernos 100 hojas líneas' },

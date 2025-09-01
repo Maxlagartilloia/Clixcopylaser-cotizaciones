@@ -12,7 +12,7 @@ interface FinalQuoteStepProps {
   onReset: () => void;
 }
 
-const WHATSAPP_NUMBER = "593123456789"; // Replace with actual number
+const WHATSAPP_NUMBER = "593989968162";
 
 export default function FinalQuoteStep({ quote, onReset }: FinalQuoteStepProps) {
 
@@ -21,7 +21,7 @@ export default function FinalQuoteStep({ quote, onReset }: FinalQuoteStepProps) 
   }
 
   const generateWhatsAppMessage = () => {
-    const header = "¡Hola! 👋 Aquí está un resumen de tu cotización de Clixcopylaser:\n\n";
+    const header = "¡Hola! 👋 Aquí está un resumen de tu cotización de Importadora Clixcopylaser:\n\n";
     const items = quote.items.map(item => `- ${item.quantity}x ${item.name}`).join('\n');
     const footer = `\n\n*Subtotal:* ${formatCurrency(quote.subtotal)}\n*IVA (12%):* ${formatCurrency(quote.iva)}\n*Total:* *${formatCurrency(quote.total)}*\n\nPara ver el detalle completo o confirmar tu pedido, contáctanos.`;
     

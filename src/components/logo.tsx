@@ -8,7 +8,7 @@ export default function Logo() {
         <ShoppingCart className="text-primary-foreground h-5 w-5" />
       </div>
       <span className="font-headline text-xl font-bold tracking-tight">
-        Clixcopylaser
+        Importadora Clixcopylaser
       </span>
     </Link>
   );

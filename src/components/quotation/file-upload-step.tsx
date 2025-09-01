@@ -24,9 +24,8 @@ export default function FileUploadStep({ onFileProcessed }: FileUploadStepProps)
     if (!file) return;
     setIsUploading(true);
     try {
-      // We'll use the file name to simulate parsing.
-      // In a real app, you'd send the file content to a server or process it client-side.
-      const parsedItems = await parseList(file.name);
+      // Pass the entire file object to the action
+      const parsedItems = await parseList(file);
       onFileProcessed(parsedItems);
     } catch (error) {
       toast({
