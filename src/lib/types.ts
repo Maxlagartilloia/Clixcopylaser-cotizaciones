@@ -22,7 +22,7 @@ export interface MatchedItem extends ParsedItem {
 export interface SuggestedReplacement {
   originalItem: string;
   replacementItem: string;
-  reason: string;
+a  reason: string;
 }
 
 export interface QuoteItem {
@@ -41,4 +41,10 @@ export interface Quote {
   total: number;
   unavailableItems: MatchedItem[];
   suggestions: SuggestedReplacement[];
+}
+
+export interface Synonym {
+    id: string;
+    term: string;
+    normalizedTerm: string;
 }

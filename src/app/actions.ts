@@ -2,7 +2,7 @@
 
 import { suggestReplacements as replacementsFlow } from '@/ai/flows/ai-suggested-replacements';
 import { getDb } from '@/lib/firebase-admin';
-import type { CatalogItem, MatchedItem, ParsedItem, SuggestedReplacement, SuggestReplacementsInput } from '@/lib/types';
+import type { CatalogItem, MatchedItem, ParsedItem, SuggestedReplacement, SuggestReplacementsInput, Synonym } from '@/lib/types';
 import crypto from 'crypto';
 import { matchProducto } from '@/lib/normalizar';
 
@@ -31,6 +31,7 @@ export async function parseList(file: File): Promise<ParsedItem[]> {
     } 
     
     console.log('Cache miss. Processing image with AI.');
+    // Mock processing for image
     await new Promise(resolve => setTimeout(resolve, 1500));
     const result: ParsedItem[] = [
       { id: '1', raw: '2 cuadernos 100 hojas líneas', quantity: 2, description: 'cuadernos 100 hojas líneas' },
@@ -44,38 +45,66 @@ export async function parseList(file: File): Promise<ParsedItem[]> {
     console.log('Result saved to cache.');
     return result;
   }
+  
+  // This part is for the example button, not for CSV.
+  if (file.size === 0 && file.name === "lista_ejemplo.txt") {
+      console.log('Using example data.');
+      await new Promise(resolve => setTimeout(resolve, 500));
+      return [
+        { id: '1', raw: '2 cuadernos 100 hojas líneas', quantity: 2, description: 'cuadernos 100 hojas líneas' },
+        { id: '2', raw: '1 Lápiz HB', quantity: 1, description: 'Lápiz HB' },
+        { id: '3', raw: '1 borrador de queso', quantity: 1, description: 'borrador' },
+        { id: '4', raw: '1 sacapuntas', quantity: 1, description: 'sacapuntas' },
+        { id: '5', raw: '1 marcador permanente negro', quantity: 1, description: 'marcador permanente negro' },
+      ];
+  }
 
-  // Fallback for other file types, like CSV or example
+  // If a CSV is passed here by mistake, return empty. It's handled by uploadCatalog.
   if (file.type === 'text/csv') {
-      console.log('CSV file detected in parseList, but it should be handled by uploadCatalog. Returning empty array for this step.');
+      console.log('CSV file passed to parseList, ignoring.');
       return [];
   }
   
-  console.log('Using example data.');
-  await new Promise(resolve => setTimeout(resolve, 500));
-  return [
-    { id: '1', raw: '2 cuadernos 100 hojas líneas', quantity: 2, description: 'cuadernos 100 hojas líneas' },
-    { id: '2', raw: '1 Lápiz HB', quantity: 1, description: 'Lápiz HB' },
-    { id: '3', raw: '1 borrador de queso', quantity: 1, description: 'borrador' },
-    { id: '4', raw: '1 sacapuntas', quantity: 1, description: 'sacapuntas' },
-    { id: '5', raw: '1 marcador permanente negro', quantity: 1, description: 'marcador permanente negro' },
-  ];
+  // Fallback for other file types or errors
+  console.log('Unsupported file type for parsing, returning empty array.');
+  return [];
 }
 
 
 // Fetch catalog from firestore
-async function getCatalog(): Promise<CatalogItem[]> {
+export async function getCatalog(): Promise<CatalogItem[]> {
   const db = getDb();
-  const productsSnapshot = await db.collection('products').get();
+  const productsSnapshot = await db.collection('products').orderBy('material').get();
   if (productsSnapshot.empty) {
     console.log('No products found in Firestore.');
     return [];
   }
   const catalog: CatalogItem[] = [];
   productsSnapshot.forEach(doc => {
-    catalog.push(doc.data() as CatalogItem);
+    const data = doc.data();
+    catalog.push({
+        id: doc.id,
+        material: data.material,
+        marca: data.marca,
+        unidad: data.unidad,
+        costoUnitario: data.costoUnitario,
+    });
   });
   return catalog;
+}
+
+// Add a new product to firestore
+export async function addProduct(id: string, product: Omit<CatalogItem, 'id'>) {
+    const db = getDb();
+    // Use the provided ID as the document ID
+    const docRef = db.collection('products').doc(id);
+    await docRef.set(product);
+}
+
+// Delete a product from firestore
+export async function deleteProduct(id: string) {
+    const db = getDb();
+    await db.collection('products').doc(id).delete();
 }
 
 
@@ -223,7 +252,12 @@ export async function uploadCatalog(file: File): Promise<{success: boolean, mess
 
         products.forEach(product => {
             const docRef = db.collection('products').doc(product.id);
-            batch.set(docRef, product);
+            batch.set(docRef, {
+                material: product.material,
+                unidad: product.unidad,
+                costoUnitario: product.costoUnitario,
+                marca: product.marca,
+            });
         });
 
         await batch.commit();
@@ -234,4 +268,28 @@ export async function uploadCatalog(file: File): Promise<{success: boolean, mess
         const errorMessage = error instanceof Error ? error.message : 'Ocurrió un error desconocido.';
         return { success: false, message: `Error al procesar el archivo: ${errorMessage}`, count: 0 };
     }
+}
+
+// ---- SYNONYM ACTIONS ----
+export async function getSynonyms(): Promise<Synonym[]> {
+    const db = getDb();
+    const snapshot = await db.collection('synonyms').orderBy('term').get();
+    if (snapshot.empty) {
+        return [];
+    }
+    return snapshot.docs.map(doc => ({
+        id: doc.id,
+        term: doc.data().term,
+        normalizedTerm: doc.data().normalizedTerm,
+    }));
+}
+
+export async function addSynonym(synonym: Omit<Synonym, 'id'>) {
+    const db = getDb();
+    await db.collection('synonyms').add(synonym);
+}
+
+export async function deleteSynonym(id: string) {
+    const db = getDb();
+    await db.collection('synonyms').doc(id).delete();
 }
