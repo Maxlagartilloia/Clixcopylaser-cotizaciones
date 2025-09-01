@@ -1,4 +1,3 @@
-
 'use server';
 
 import { suggestReplacements as replacementsFlow } from '@/ai/flows/ai-suggested-replacements';
@@ -174,24 +173,33 @@ export async function uploadCatalog(file: File): Promise<{success: boolean, mess
             return { success: false, message: 'El archivo CSV está vacío o no tiene cabecera.', count: 0 };
         }
         
-        const headers = headerLine.split(',').map(h => h.trim().toUpperCase());
+        // Normalize headers from the file for robust matching
+        const fileHeaders = headerLine.split(',').map(h => h.trim().toUpperCase().replace(/\s+/g, ''));
         
-        const requiredHeaders = ['ID', 'MATERIAL', 'UNIDAD', 'COSTO UNITARIO', 'MARCA'];
-        const missingHeaders = requiredHeaders.filter(h => !headers.includes(h.toUpperCase()));
+        // Define required headers in a normalized way
+        const requiredHeaders = ['ID', 'MATERIAL', 'UNIDAD', 'COSTOUNITARIO', 'MARCA'];
+
+        const missingHeaders = requiredHeaders.filter(rh => !fileHeaders.includes(rh));
 
         if (missingHeaders.length > 0) {
-             return { success: false, message: `Faltan las siguientes cabeceras en el CSV: ${missingHeaders.join(', ')}`, count: 0 };
+            // Map back to original names for a user-friendly error message
+            const originalMissing = missingHeaders.map(mh => {
+                if (mh === 'COSTOUNITARIO') return 'COSTO UNITARIO';
+                return mh;
+            })
+             return { success: false, message: `Faltan las siguientes cabeceras en el CSV: ${originalMissing.join(', ')}`, count: 0 };
         }
 
-        const idIndex = headers.indexOf('ID');
-        const materialIndex = headers.indexOf('MATERIAL');
-        const unidadIndex = headers.indexOf('UNIDAD');
-        const costoIndex = headers.indexOf('COSTO UNITARIO');
-        const marcaIndex = headers.indexOf('MARCA');
+        // Get the index of each column from the user's file
+        const idIndex = fileHeaders.indexOf('ID');
+        const materialIndex = fileHeaders.indexOf('MATERIAL');
+        const unidadIndex = fileHeaders.indexOf('UNIDAD');
+        const costoIndex = fileHeaders.indexOf('COSTOUNITARIO');
+        const marcaIndex = fileHeaders.indexOf('MARCA');
 
         const products: CatalogItem[] = rows.map(row => {
             const values = row.trim().split(',');
-            // Replace comma with dot for decimal conversion
+            // Replace comma with dot for decimal conversion and remove any non-numeric chars except the separator
             const costString = values[costoIndex]?.replace(/[^0-9,]/g, '').replace(',', '.') || '0';
             
             return {
