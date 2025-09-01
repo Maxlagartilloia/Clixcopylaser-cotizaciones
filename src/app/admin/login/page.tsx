@@ -8,18 +8,32 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from 'lucide-react';
 import Logo from '@/components/logo';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
+import { useToast } from '@/hooks/use-toast';
 
 export default function AdminLoginPage() {
     const router = useRouter();
+    const { toast } = useToast();
     const [isLoading, setIsLoading] = useState(false);
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
 
-    const handleLogin = (e: React.FormEvent) => {
+    const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
-        // Simulate API call for login
-        setTimeout(() => {
+        try {
+            await signInWithEmailAndPassword(auth, email, password);
             router.push('/admin/dashboard');
-        }, 1000);
+        } catch (error: any) {
+            console.error("Error de autenticación:", error);
+            toast({
+                variant: "destructive",
+                title: "Error de autenticación",
+                description: "Las credenciales son incorrectas. Por favor, inténtalo de nuevo.",
+            });
+            setIsLoading(false);
+        }
     }
 
     return (
@@ -36,11 +50,11 @@ export default function AdminLoginPage() {
                     <CardContent className="space-y-4">
                         <div className="space-y-2">
                             <Label htmlFor="email">Email</Label>
-                            <Input id="email" type="email" placeholder="admin@clix.com" required defaultValue="admin@clix.com" />
+                            <Input id="email" type="email" placeholder="admin@clix.com" required value={email} onChange={(e) => setEmail(e.target.value)} />
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="password">Contraseña</Label>
-                            <Input id="password" type="password" required defaultValue="password" />
+                            <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
                         </div>
                     </CardContent>
                     <CardFooter>

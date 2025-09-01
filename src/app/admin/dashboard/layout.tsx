@@ -1,3 +1,5 @@
+"use client"
+
 import type { PropsWithChildren } from "react";
 import {
     Sidebar,
@@ -13,9 +15,34 @@ import {
 import { Home, Package, Settings, BookType, LogOut } from 'lucide-react';
 import Logo from "@/components/logo";
 import Link from "next/link";
-import { Separator } from "@/components/ui/separator";
+import { usePathname } from "next/navigation";
+import { auth } from "@/lib/firebase";
+import { useAuthState } from "react-firebase-hooks/auth";
+import { useRouter } from "next/navigation";
 
 export default function DashboardLayout({ children }: PropsWithChildren) {
+    const pathname = usePathname();
+    const router = useRouter();
+    const [user, loading] = useAuthState(auth);
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center h-screen">
+                <p>Cargando...</p>
+            </div>
+        );
+    }
+
+    if (!user) {
+        router.push("/admin/login");
+        return null;
+    }
+    
+    const handleLogout = async () => {
+        await auth.signOut();
+        router.push("/admin/login");
+    };
+
     return (
         <div className="min-h-screen w-full">
             <SidebarProvider>
@@ -31,17 +58,17 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
                     <SidebarContent>
                         <SidebarMenu>
                             <SidebarMenuItem>
-                                <SidebarMenuButton asChild tooltip="Dashboard">
+                                <SidebarMenuButton asChild tooltip="Dashboard" isActive={pathname === "/admin/dashboard"}>
                                     <Link href="/admin/dashboard"><Home /><span>Dashboard</span></Link>
                                 </SidebarMenuButton>
                             </SidebarMenuItem>
                             <SidebarMenuItem>
-                                <SidebarMenuButton asChild tooltip="Productos">
+                                <SidebarMenuButton asChild tooltip="Productos" isActive={pathname.startsWith("/admin/dashboard/products")}>
                                     <Link href="/admin/dashboard/products"><Package /><span>Productos</span></Link>
                                 </SidebarMenuButton>
                             </SidebarMenuItem>
                             <SidebarMenuItem>
-                                <SidebarMenuButton asChild tooltip="Sinónimos">
+                                <SidebarMenuButton asChild tooltip="Sinónimos" isActive={pathname.startsWith("/admin/dashboard/synonyms")}>
                                     <Link href="/admin/dashboard/synonyms"><BookType /><span>Sinónimos</span></Link>
                                 </SidebarMenuButton>
                             </SidebarMenuItem>
@@ -50,13 +77,13 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
                     <SidebarFooter>
                         <SidebarMenu>
                             <SidebarMenuItem>
-                                <SidebarMenuButton asChild tooltip="Ajustes">
+                                <SidebarMenuButton asChild tooltip="Ajustes" isActive={pathname.startsWith("/admin/dashboard/settings")}>
                                     <Link href="/admin/dashboard/settings"><Settings /><span>Ajustes</span></Link>
                                 </SidebarMenuButton>
                             </SidebarMenuItem>
                             <SidebarMenuItem>
-                                <SidebarMenuButton asChild tooltip="Salir">
-                                    <Link href="/"><LogOut /><span>Salir</span></Link>
+                                <SidebarMenuButton onClick={handleLogout} asChild tooltip="Salir">
+                                    <div><LogOut /><span>Salir</span></div>
                                 </SidebarMenuButton>
                             </SidebarMenuItem>
                         </SidebarMenu>
