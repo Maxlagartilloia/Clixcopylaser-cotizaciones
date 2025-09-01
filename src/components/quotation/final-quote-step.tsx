@@ -23,7 +23,7 @@ export default function FinalQuoteStep({ quote, onReset }: FinalQuoteStepProps) 
   const generateWhatsAppMessage = () => {
     const header = "¡Hola! 👋 Aquí está un resumen de tu cotización de Importadora Clixcopylaser:\n\n";
     const items = quote.items.map(item => `- ${item.quantity}x ${item.material}`).join('\n');
-    const footer = `\n\n*Subtotal:* ${formatCurrency(quote.subtotal)}\n*IVA (12%):* ${formatCurrency(quote.iva)}\n*Total:* *${formatCurrency(quote.total)}*\n\nPara ver el detalle completo o confirmar tu pedido, contáctanos.`;
+    const footer = `\n\n*Subtotal:* ${formatCurrency(quote.subtotal)}\n*IVA (15%):* ${formatCurrency(quote.iva)}\n*Total:* *${formatCurrency(quote.total)}*\n\nPara ver el detalle completo o confirmar tu pedido, contáctanos.`;
     
     const message = encodeURIComponent(header + items + footer);
     return `https://wa.me/${WHATSAPP_NUMBER}?text=${message}`;
@@ -70,7 +70,7 @@ export default function FinalQuoteStep({ quote, onReset }: FinalQuoteStepProps) 
                       <TableCell className="text-right font-mono font-semibold">{formatCurrency(quote.subtotal)}</TableCell>
                   </TableRow>
                   <TableRow>
-                      <TableCell colSpan={4} className="text-right font-medium">IVA (12%)</TableCell>
+                      <TableCell colSpan={4} className="text-right font-medium">IVA (15%)</TableCell>
                       <TableCell className="text-right font-mono font-semibold">{formatCurrency(quote.iva)}</TableCell>
                   </TableRow>
                   <TableRow className="text-lg font-bold">

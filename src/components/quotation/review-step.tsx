@@ -11,7 +11,7 @@ import { ArrowRight, Bot, CheckCircle, HelpCircle, Loader2, RotateCcw, Sparkles,
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 
-const IVA_RATE = 0.12;
+const IVA_RATE = 0.15;
 
 interface ReviewStepProps {
   initialItems: ParsedItem[];
