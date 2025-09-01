@@ -8,6 +8,7 @@ import { PlusCircle, Upload } from "lucide-react";
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import { uploadCatalog } from '@/app/actions';
 
 export default function ProductsPage() {
     const [file, setFile] = useState<File | null>(null);
@@ -33,6 +34,7 @@ export default function ProductsPage() {
     const handleUpload = async () => {
         if (!file) {
             toast({
+                variant: "destructive",
                 title: "No hay archivo seleccionado",
                 description: "Por favor, selecciona un archivo CSV para subir.",
             });
@@ -40,16 +42,31 @@ export default function ProductsPage() {
         }
 
         setIsUploading(true);
-        // Aquí irá la lógica para procesar el CSV y subirlo a Firestore
-        await new Promise(resolve => setTimeout(resolve, 2000)); // Simulación de carga
-        setIsUploading(false);
         
-        toast({
-            title: "Carga Exitosa",
-            description: `El archivo ${file.name} se ha subido. (La importación a la base de datos se implementará a continuación).`,
-        });
-
-        setFile(null);
+        try {
+            const result = await uploadCatalog(file);
+            if (result.success) {
+                toast({
+                    title: "Carga Exitosa",
+                    description: `${result.count} productos han sido importados a la base de datos.`,
+                });
+                setFile(null);
+            } else {
+                toast({
+                    variant: "destructive",
+                    title: "Error al subir el catálogo",
+                    description: result.message,
+                });
+            }
+        } catch (error) {
+            toast({
+                variant: "destructive",
+                title: "Error inesperado",
+                description: "Ocurrió un error al comunicarse con el servidor.",
+            });
+        } finally {
+            setIsUploading(false);
+        }
     };
 
     return (
@@ -65,7 +82,7 @@ export default function ProductsPage() {
                 <Card>
                     <CardHeader>
                         <CardTitle>Subir Catálogo con CSV</CardTitle>
-                        <CardDescription>Importa tu catálogo de productos masivamente desde un archivo CSV.</CardDescription>
+                        <CardDescription>Importa tu catálogo de productos masivamente desde un archivo CSV. Las columnas deben ser: id,name,brand,unitPrice,stock</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="space-y-2">

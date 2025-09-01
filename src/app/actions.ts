@@ -2,9 +2,8 @@
 
 import { normalizeItemDescription as normalizeFlow } from '@/ai/flows/normalize-item-descriptions';
 import { suggestReplacements as replacementsFlow } from '@/ai/flows/ai-suggested-replacements';
-import { mockCatalog } from '@/lib/data';
-import type { MatchedItem, ParsedItem, SuggestedReplacement, SuggestReplacementsInput } from '@/lib/types';
 import { getDb } from '@/lib/firebase-admin';
+import type { CatalogItem, MatchedItem, ParsedItem, SuggestedReplacement, SuggestReplacementsInput } from '@/lib/types';
 import crypto from 'crypto';
 
 
@@ -65,15 +64,37 @@ export async function parseList(file: File): Promise<ParsedItem[]> {
 }
 
 
+// Fetch catalog from firestore
+async function getCatalog(): Promise<CatalogItem[]> {
+  const db = getDb();
+  const productsSnapshot = await db.collection('products').get();
+  if (productsSnapshot.empty) {
+    console.log('No products found in Firestore.');
+    return [];
+  }
+  const catalog: CatalogItem[] = [];
+  productsSnapshot.forEach(doc => {
+    catalog.push(doc.data() as CatalogItem);
+  });
+  return catalog;
+}
+
+
 // Normalize and match items
 export async function processItems(items: ParsedItem[]): Promise<MatchedItem[]> {
+  const catalog = await getCatalog();
+  if (catalog.length === 0) {
+    // If catalog is empty, mark all as not found
+    return items.map(item => ({ ...item, status: 'not_found' }));
+  }
+
   const processedItems: MatchedItem[] = await Promise.all(
     items.map(async (item) => {
       try {
         const { normalizedItemDescription } = await normalizeFlow({ itemDescription: item.description });
         
         // Match against catalog
-        const catalogItem = mockCatalog.find(ci => ci.name.includes(normalizedItemDescription));
+        const catalogItem = catalog.find(ci => ci.name.includes(normalizedItemDescription));
 
         if (catalogItem) {
           const status = catalogItem.stock === 0 ? 'not_found' : catalogItem.stock < item.quantity ? 'low_stock' : 'found';
@@ -100,13 +121,15 @@ export async function getSuggestions(unavailableItems: MatchedItem[]): Promise<S
   if(unavailableItems.length === 0) {
     return [];
   }
+  
+  const catalog = await getCatalog();
 
   const input: SuggestReplacementsInput = {
     unavailableItems: unavailableItems.map(item => ({
       itemName: item.normalizedDescription || item.description,
       quantity: item.quantity,
     })),
-    availableItems: mockCatalog.filter(item => item.stock > 0).map(item => ({
+    availableItems: catalog.filter(item => item.stock > 0).map(item => ({
         itemName: item.name,
         unitPrice: item.unitPrice,
         stock: item.stock
@@ -120,10 +143,57 @@ export async function getSuggestions(unavailableItems: MatchedItem[]): Promise<S
   } catch (error) {
     console.error('Error getting AI suggestions:', error);
     // Return a mock suggestion on error for demo purposes
-    return [{
-      originalItem: unavailableItems[0].description,
-      replacementItem: mockCatalog.find(i => i.stock > 0)?.name || 'No replacement found',
-      reason: "El modelo AI no pudo generar una sugerencia, esta es una alternativa de respaldo."
-    }];
+    if (catalog.length > 0) {
+        return [{
+          originalItem: unavailableItems[0].description,
+          replacementItem: catalog.find(i => i.stock > 0)?.name || 'No replacement found',
+          reason: "El modelo AI no pudo generar una sugerencia, esta es una alternativa de respaldo."
+        }];
+    }
+    return [];
   }
+}
+
+// Upload catalog from CSV
+export async function uploadCatalog(file: File): Promise<{success: boolean, message: string, count: number}> {
+    if (!file || file.type !== 'text/csv') {
+        return { success: false, message: 'Por favor, selecciona un archivo CSV válido.', count: 0 };
+    }
+
+    try {
+        const fileContent = await file.text();
+        const rows = fileContent.split('\n').filter(row => row.trim() !== '');
+        const headers = rows.shift()?.trim().split(',');
+
+        if (!headers || headers.join(',') !== 'id,name,brand,unitPrice,stock') {
+             return { success: false, message: 'Las cabeceras del CSV deben ser: id,name,brand,unitPrice,stock', count: 0 };
+        }
+
+        const products: CatalogItem[] = rows.map(row => {
+            const values = row.trim().split(',');
+            return {
+                id: values[0],
+                name: values[1],
+                brand: values[2],
+                unitPrice: parseFloat(values[3]),
+                stock: parseInt(values[4], 10),
+            };
+        });
+
+        const db = getDb();
+        const batch = db.batch();
+
+        products.forEach(product => {
+            const docRef = db.collection('products').doc(product.id);
+            batch.set(docRef, product);
+        });
+
+        await batch.commit();
+
+        return { success: true, message: 'Catálogo subido exitosamente.', count: products.length };
+    } catch(error) {
+        console.error("Error al subir el catálogo:", error);
+        const errorMessage = error instanceof Error ? error.message : 'Ocurrió un error desconocido.';
+        return { success: false, message: `Error al procesar el archivo: ${errorMessage}`, count: 0 };
+    }
 }
