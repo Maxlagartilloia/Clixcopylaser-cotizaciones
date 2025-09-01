@@ -177,7 +177,7 @@ export async function uploadCatalog(file: File): Promise<{success: boolean, mess
         const headers = headerLine.split(',').map(h => h.trim().toUpperCase());
         
         const requiredHeaders = ['ID', 'MATERIAL', 'UNIDAD', 'COSTO UNITARIO', 'MARCA'];
-        const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
+        const missingHeaders = requiredHeaders.filter(h => !headers.includes(h.toUpperCase()));
 
         if (missingHeaders.length > 0) {
              return { success: false, message: `Faltan las siguientes cabeceras en el CSV: ${missingHeaders.join(', ')}`, count: 0 };
@@ -191,7 +191,8 @@ export async function uploadCatalog(file: File): Promise<{success: boolean, mess
 
         const products: CatalogItem[] = rows.map(row => {
             const values = row.trim().split(',');
-            const costString = values[costoIndex]?.replace(/[^0-9,.]/g, '').replace(',', '.') || '0';
+            // Replace comma with dot for decimal conversion
+            const costString = values[costoIndex]?.replace(/[^0-9,]/g, '').replace(',', '.') || '0';
             
             return {
                 id: values[idIndex],
