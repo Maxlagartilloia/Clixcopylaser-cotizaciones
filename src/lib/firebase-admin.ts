@@ -1,16 +1,17 @@
 'use server';
 import * as admin from 'firebase-admin';
 
-if (!admin.apps.length) {
-  try {
-    admin.initializeApp({
-      credential: admin.credential.applicationDefault(),
-    });
-  } catch (error) {
-    console.error('Firebase admin initialization error', error);
-  }
+function getDb() {
+    if (!admin.apps.length) {
+        try {
+            admin.initializeApp({
+                credential: admin.credential.applicationDefault(),
+            });
+        } catch (error) {
+            console.error('Firebase admin initialization error', error);
+        }
+    }
+    return admin.firestore();
 }
 
-const db = admin.firestore();
-
-export { db };
+export { getDb };

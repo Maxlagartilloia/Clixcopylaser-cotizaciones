@@ -4,7 +4,7 @@ import { normalizeItemDescription as normalizeFlow } from '@/ai/flows/normalize-
 import { suggestReplacements as replacementsFlow } from '@/ai/flows/ai-suggested-replacements';
 import { mockCatalog } from '@/lib/data';
 import type { MatchedItem, ParsedItem, SuggestedReplacement, SuggestReplacementsInput } from '@/lib/types';
-import { db } from '@/lib/firebase-admin';
+import { getDb } from '@/lib/firebase-admin';
 import crypto from 'crypto';
 
 
@@ -17,6 +17,7 @@ async function generateImageHash(file: File): Promise<string> {
 // Simulate parsing a file
 export async function parseList(file: File): Promise<ParsedItem[]> {
   console.log(`Parsing file: ${file.name}`);
+  const db = getDb();
 
   // Caching for images
   if (file.type.startsWith('image/')) {

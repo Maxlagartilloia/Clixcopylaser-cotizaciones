@@ -1,4 +1,6 @@
 import QuotationTool from './quotation-tool';
+import { Suspense } from 'react';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function Home() {
   return (
@@ -11,7 +13,9 @@ export default function Home() {
           Sube tu lista de útiles escolares en cualquier formato y recibe una cotización detallada al instante. ¡Rápido, fácil y preciso!
         </p>
       </header>
-      <QuotationTool />
+      <Suspense fallback={<Skeleton className="w-full h-96" />}>
+        <QuotationTool />
+      </Suspense>
     </div>
   );
 }
