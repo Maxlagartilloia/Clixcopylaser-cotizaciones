@@ -15,11 +15,10 @@ async function generateImageHash(file: File): Promise<string> {
 
 // Simulate parsing a file
 export async function parseList(file: File): Promise<ParsedItem[]> {
-  console.log(`Parsing file: ${file.name}`);
-  const db = getDb();
-
-  // Caching for images
+  console.log(`Parsing file: ${file.name} of type ${file.type}`);
+  
   if (file.type.startsWith('image/')) {
+    const db = getDb();
     const imageHash = await generateImageHash(file);
     const cacheRef = db.collection('imageCache').doc(imageHash);
     const cacheDoc = await cacheRef.get();
@@ -28,14 +27,13 @@ export async function parseList(file: File): Promise<ParsedItem[]> {
       console.log('Cache hit! Returning cached result for image.');
       const data = cacheDoc.data();
       if(data) {
-        // Ensure createdAt is a serializable format if needed, but for returning it's fine
         return data.result as ParsedItem[];
       }
     } 
     
     console.log('Cache miss. Processing image with AI.');
     // In a real app, this would use OCR/parsing logic.
-    // Here we return mock data.
+    // Here we return mock data for images.
     await new Promise(resolve => setTimeout(resolve, 1500));
     const result: ParsedItem[] = [
       { id: '1', raw: '2 cuadernos 100 hojas líneas', quantity: 2, description: 'cuadernos 100 hojas líneas' },
@@ -51,8 +49,8 @@ export async function parseList(file: File): Promise<ParsedItem[]> {
     return result;
   }
 
-  // Fallback for non-image files or if caching is not applicable
-  console.log('Processing non-image file.');
+  // Fallback for non-image/non-csv files or if caching is not applicable
+  console.log('File type not supported for direct parsing, returning mock data.');
   await new Promise(resolve => setTimeout(resolve, 1500));
   return [
     { id: '1', raw: '2 cuadernos 100 hojas líneas', quantity: 2, description: 'cuadernos 100 hojas líneas' },
@@ -163,6 +161,8 @@ export async function uploadCatalog(file: File): Promise<{success: boolean, mess
     if (!file || file.type !== 'text/csv') {
         return { success: false, message: 'Por favor, selecciona un archivo CSV válido.', count: 0 };
     }
+    
+    console.log("Processing CSV file upload...");
 
     try {
         const fileContent = await file.text();
@@ -177,17 +177,20 @@ export async function uploadCatalog(file: File): Promise<{success: boolean, mess
         const fileHeaders = headerLine.split(',').map(h => h.trim().toUpperCase().replace(/\s+/g, ''));
         
         // Define required headers in a normalized way
-        const requiredHeaders = ['ID', 'MATERIAL', 'UNIDAD', 'COSTOUNITARIO', 'MARCA'];
+        const requiredHeadersMap = {
+            'ID': 'ID',
+            'MATERIAL': 'MATERIAL',
+            'UNIDAD': 'UNIDAD',
+            'COSTOUNITARIO': 'COSTO UNITARIO',
+            'MARCA': 'MARCA',
+        };
+        const requiredHeaderKeys = Object.keys(requiredHeadersMap);
 
-        const missingHeaders = requiredHeaders.filter(rh => !fileHeaders.includes(rh));
+        const missingHeaders = requiredHeaderKeys.filter(rh => !fileHeaders.includes(rh));
 
         if (missingHeaders.length > 0) {
-            // Map back to original names for a user-friendly error message
-            const originalMissing = missingHeaders.map(mh => {
-                if (mh === 'COSTOUNITARIO') return 'COSTO UNITARIO';
-                return mh;
-            })
-             return { success: false, message: `Faltan las siguientes cabeceras en el CSV: ${originalMissing.join(', ')}`, count: 0 };
+            const originalMissing = missingHeaders.map(mh => requiredHeadersMap[mh as keyof typeof requiredHeadersMap]);
+            return { success: false, message: `Faltan las siguientes cabeceras en el CSV: ${originalMissing.join(', ')}`, count: 0 };
         }
 
         // Get the index of each column from the user's file
@@ -200,7 +203,7 @@ export async function uploadCatalog(file: File): Promise<{success: boolean, mess
         const products: CatalogItem[] = rows.map(row => {
             const values = row.trim().split(',');
             // Replace comma with dot for decimal conversion and remove any non-numeric chars except the separator
-            const costString = values[costoIndex]?.replace(/[^0-9,]/g, '').replace(',', '.') || '0';
+            const costString = values[costoIndex]?.replace(/[^0-9,.]/g, '').replace(',', '.') || '0';
             
             return {
                 id: values[idIndex],
