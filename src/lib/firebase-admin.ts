@@ -1,8 +1,6 @@
 'use server';
 import * as admin from 'firebase-admin';
 
-let db: admin.firestore.Firestore;
-
 if (!admin.apps.length) {
   try {
     admin.initializeApp({
@@ -13,6 +11,6 @@ if (!admin.apps.length) {
   }
 }
 
-db = admin.firestore();
+const db = admin.firestore();
 
 export { db };
